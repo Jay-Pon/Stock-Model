@@ -23,9 +23,10 @@ def createDataset(data, look_back = 10):
         X.append(data[i:i+look_back])
         Y.append(data[i + look_back])
     
+    X = np.array(X)
     X = np.reshape(X, (X.shape[0], 1, X.shape[1]))
 
-    return np.array(X), np.array(Y)
+    return X, np.array(Y)
 
 def makeModel(X, Y):
     
