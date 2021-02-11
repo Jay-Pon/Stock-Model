@@ -8,8 +8,8 @@ import requests
 import os
 import io
 
-# ALPHA_VANTAGE_API = os.environ.get("ALPHA_VANTAGE_API")
-ALPHA_VANTAGE_API = "IY7F156939XRVUTU"
+from secrets import ALPHA_VANTAGE_API
+
 def createDataset(data, look_back = 10):
     X = []
     Y = []
