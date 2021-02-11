@@ -44,17 +44,6 @@ def makeModel(X, Y):
     
     return model
 
-    
-    model = Sequential()
-
-    model.add(LSTM(units = 10, activation='relu', input_shape=(1, X.shape[2])))
-    model.add(Dense(1))
-    
-    model.compile(loss = 'mean_squared_error', optimizer = 'adam')
-    model.fit(X, Y, epochs=60, verbose = 0)
-    
-    return model
-
 def getData(symb, look_back = 10):
     alpha_api_call = 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol={symbol}&apikey={api_key}&datatype=csv'.format(symbol = symb, api_key = ALPHA_VANTAGE_API)
     content = requests.get(alpha_api_call).content
