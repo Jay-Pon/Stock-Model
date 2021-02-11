@@ -65,7 +65,6 @@ def getData(symb, look_back):
     min_price = data['adjusted_close'].min()
 
     data['adjusted_close'] = data['adjusted_close'].apply(lambda x : (x - data['adjusted_close'].min()) / (data['adjusted_close'].max() - data['adjusted_close'].min()))
-    tomorrow = data.head(20)
     total = data.shape[0]
     num_train = int(total * 0.67)
     training = data[:num_train]
@@ -74,10 +73,10 @@ def getData(symb, look_back):
     train_X, train_Y = createDataset(training, look_back = look_back)
     test_X, test_Y = createDataset(test, look_back = look_back)
 
-    return min_price, adj_price, train_X, train_Y, test_X, test_Y, tomorrow
+    return min_price, adj_price, train_X, train_Y, test_X, test_Y
 
 def drive(symbol):
-    min_price, adj_price, train_X, train_Y, test_X, test_Y, tomorrow = getData(symbol, look_back = 20)
+    min_price, adj_price, train_X, train_Y, test_X, test_Y = getData(symbol, look_back = 20)
 
     model = makeModel(train_X, train_Y)
     model2 = makeModel2(train_X, train_Y)
@@ -88,11 +87,10 @@ def drive(symbol):
     print("Model 1 error: ", mse(predictions, test_Y))
     print("Model 2 error 2: ", mse(predictions2, test_Y))
 
-def predictTomorrow(test_X, min_price, adj_price):
     tomorrow_data = test_X[-1:]
     tomorrow_price = model.predict(tomorrow_data) * (adj_price - min_price) + min_price
     tomorrow_price2 = model2.predict(tomorrow_data) * (adj_price - min_price) + min_price
-
+ 
     print("Model 1 Prediction: ", tomorrow_price[0][0])
     print("Model 2 Prediction: ", tomorrow_price2[0][0])
 
