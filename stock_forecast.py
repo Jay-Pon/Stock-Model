@@ -2,25 +2,21 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.layers import LSTM
-from sklearn.preprocessing import MinMaxScaler
+from tensorflow.keras.layers import Dense, LSTM
 from sklearn.metrics import mean_squared_error as mse
 import requests
 import os
 import io
 
-ALPHA_VANTAGE_API = os.environ.get("ALPHA_VANTAGE_API")
-
+# ALPHA_VANTAGE_API = os.environ.get("ALPHA_VANTAGE_API")
+ALPHA_VANTAGE_API = "IY7F156939XRVUTU"
 def createDataset(data, look_back = 10):
     X = []
     Y = []
-    
-    total = data.shape[0]
     data = list(data['adjusted_close']) 
 
     for i in range(len(data) - look_back):
-        X.append(data[i:i+look_back])
+        X.append(data[i : i + look_back])
         Y.append(data[i + look_back])
     
     X = np.array(X)
@@ -28,47 +24,77 @@ def createDataset(data, look_back = 10):
 
     return X, np.array(Y)
 
-def makeModel(X, Y):
-    
+def makeModel2(X, Y):
     model = Sequential()
-    model.add(LSTM(units = 10, activation='relu', input_shape=(1, X.shape[2])))
+    
+    model.add(LSTM(units = 10, activation='relu', return_sequences = True, input_shape=(1, X.shape[2])))
+    model.add(Dropout(0.2))
+    
+    model.add(LSTM(units = 40, return_sequences = True, activation='relu'))
+    model.add(Dropout(0.2))
+    
+    model.add(LSTM(units = 60, activation='relu'))
+    model.add(Dropout(0.2))
+        
     model.add(Dense(1))
+    
     model.compile(loss = 'mean_squared_error', optimizer = 'adam')
-
-    model.fit(X, Y, epochs=75)
+    model.fit(X, Y, epochs=75, verbose = 0)
     
     return model
 
-def getData(symb):
-    alpha_call = 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol={symbol}&apikey={api_key}&datatype=csv'.format(symbol = symb, api_key = ALPHA_VANTAGE_API)
-    content = requests.get(alpha_call).content
-    data = pd.read_csv(io.StringIO(content.decode('utf-8')))
-    data = data[['adjusted_close']]
+def makeModel(X, Y):
+    
+    model = Sequential()
 
+    model.add(LSTM(units = 10, activation='relu', input_shape=(1, X.shape[2])))
+    model.add(Dense(1))
+    
+    model.compile(loss = 'mean_squared_error', optimizer = 'adam')
+    model.fit(X, Y, epochs=60, verbose = 0)
+    
+    return model
+
+def getData(symb, look_back):
+    alpha_api_call = 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol={symbol}&apikey={api_key}&datatype=csv'.format(symbol = symb, api_key = ALPHA_VANTAGE_API)
+    content = requests.get(alpha_api_call).content
+    data = pd.read_csv(io.StringIO(content.decode('utf-8')))
+    data = data.iloc[::-1]
+    data = data[['adjusted_close']]
     adj_price = data['adjusted_close'].max()
     min_price = data['adjusted_close'].min()
 
     data['adjusted_close'] = data['adjusted_close'].apply(lambda x : (x - data['adjusted_close'].min()) / (data['adjusted_close'].max() - data['adjusted_close'].min()))
+    tomorrow = data.head(20)
     total = data.shape[0]
     num_train = int(total * 0.67)
     training = data[:num_train]
     test = data[num_train:]
 
-    train_X, train_Y = createDataset(training, look_back = 10)
-    test_X, test_Y = createDataset(test, look_back = 10)
+    train_X, train_Y = createDataset(training, look_back = look_back)
+    test_X, test_Y = createDataset(test, look_back = look_back)
 
-    return min_price, adj_price, train_X, train_Y, test_X, test_Y
+    return min_price, adj_price, train_X, train_Y, test_X, test_Y, tomorrow
 
-def getError(predictions, actual):
-    error = 0
-    for i in range(len(predictions)):
-        error += abs(actual[i] - predictions[i])
-    return error / len(predictions)
+def drive(symbol):
+    min_price, adj_price, train_X, train_Y, test_X, test_Y, tomorrow = getData(symbol, look_back = 20)
+
+    model = makeModel(train_X, train_Y)
+    model2 = makeModel2(train_X, train_Y)
+
+    predictions = model.predict(test_X)
+    predictions2 = model2.predict(test_X)
+
+    print("Model 1 error: ", mse(predictions, test_Y))
+    print("Model 2 error 2: ", mse(predictions2, test_Y))
+
+def predictTomorrow(test_X, min_price, adj_price):
+    tomorrow_data = test_X[-1:]
+    tomorrow_price = model.predict(tomorrow_data) * (adj_price - min_price) + min_price
+    tomorrow_price2 = model2.predict(tomorrow_data) * (adj_price - min_price) + min_price
+
+    print("Model 1 Prediction: ", tomorrow_price[0][0])
+    print("Model 2 Prediction: ", tomorrow_price2[0][0])
 
 symbol = input("Enter a symbol: ")
-
-min_price, adj_price, train_X, train_Y, test_X, test_Y = getData(symbol)
-model = makeModel(train_X, train_Y)
-predictions = model.predict(test_X)
-
-print("Error: ", getError(predictions, test_Y) * adj_price)
+drive(symbol)
