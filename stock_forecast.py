@@ -2,7 +2,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, LSTM
+from tensorflow.keras.layers import Dense, LSTM, Dropout
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error as mse
 import requests
 import os
@@ -24,7 +25,7 @@ def createDataset(data, look_back = 10):
 
     return X, np.array(Y)
 
-def makeModel2(X, Y):
+def makeModel(X, Y):
     model = Sequential()
     
     model.add(LSTM(units = 10, activation='relu', return_sequences = True, input_shape=(1, X.shape[2])))
@@ -43,7 +44,6 @@ def makeModel2(X, Y):
     
     return model
 
-def makeModel(X, Y):
     
     model = Sequential()
 
@@ -79,20 +79,15 @@ def drive(symbol):
     min_price, adj_price, train_X, train_Y, test_X, test_Y = getData(symbol, look_back = 20)
 
     model = makeModel(train_X, train_Y)
-    model2 = makeModel2(train_X, train_Y)
 
     predictions = model.predict(test_X)
-    predictions2 = model2.predict(test_X)
 
-    print("Model 1 error: ", mse(predictions, test_Y))
-    print("Model 2 error 2: ", mse(predictions2, test_Y))
+    print("Model error: ", mse(predictions, test_Y))
 
     tomorrow_data = test_X[-1:]
     tomorrow_price = model.predict(tomorrow_data) * (adj_price - min_price) + min_price
-    tomorrow_price2 = model2.predict(tomorrow_data) * (adj_price - min_price) + min_price
  
     print("Model 1 Prediction: ", tomorrow_price[0][0])
-    print("Model 2 Prediction: ", tomorrow_price2[0][0])
 
 symbol = input("Enter a symbol: ")
 drive(symbol)
