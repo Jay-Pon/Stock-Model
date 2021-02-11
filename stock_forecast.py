@@ -55,7 +55,7 @@ def makeModel(X, Y):
     
     return model
 
-def getData(symb, look_back):
+def getData(symb, look_back = 10):
     alpha_api_call = 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol={symbol}&apikey={api_key}&datatype=csv'.format(symbol = symb, api_key = ALPHA_VANTAGE_API)
     content = requests.get(alpha_api_call).content
     data = pd.read_csv(io.StringIO(content.decode('utf-8')))
