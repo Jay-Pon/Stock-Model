@@ -11,7 +11,9 @@ import io
 
 from secrets import ALPHA_VANTAGE_API
 
-def createDataset(data, look_back = 10):
+scaler = MinMaxScaler(feature_range=(0, 1))
+
+def createDataset(data, look_back = 20):
     X = []
     Y = []
     data = list(data['adjusted_close']) 
@@ -44,8 +46,8 @@ def makeModel(X, Y):
     
     return model
 
-def getData(symb, look_back = 10):
-    alpha_api_call = 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol={symbol}&apikey={api_key}&datatype=csv'.format(symbol = symb, api_key = ALPHA_VANTAGE_API)
+def getData(symb, look_back = 20):
+    alpha_api_call = 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol={symbol}&apikey={api_key}&datatype=csv&outputsize=compact'.format(symbol = symb, api_key = ALPHA_VANTAGE_API)
     content = requests.get(alpha_api_call).content
     data = pd.read_csv(io.StringIO(content.decode('utf-8')))
     data = data.iloc[::-1]
@@ -54,8 +56,13 @@ def getData(symb, look_back = 10):
     min_price = data['adjusted_close'].min()
 
     data['adjusted_close'] = data['adjusted_close'].apply(lambda x : (x - data['adjusted_close'].min()) / (data['adjusted_close'].max() - data['adjusted_close'].min()))
+    # total_data = np.array(list(data['adjusted_close'])).reshape(-1, 1)
+    # total_data = scaler.fit_transform(total_data)
+    
+    # data['adjusted_close'] = scaler.fit_transform(data['adjusted_close'])
+
     total = data.shape[0]
-    num_train = int(total * 0.67)
+    num_train = int(total * 0.75)
     training = data[:num_train]
     test = data[num_train:]
 
@@ -64,8 +71,8 @@ def getData(symb, look_back = 10):
 
     return min_price, adj_price, train_X, train_Y, test_X, test_Y
 
-def drive(symbol):
-    min_price, adj_price, train_X, train_Y, test_X, test_Y = getData(symbol, look_back = 20)
+def drive(symbol, look_back = 20):
+    min_price, adj_price, train_X, train_Y, test_X, test_Y = getData(symbol, look_back = look_back)
 
     model = makeModel(train_X, train_Y)
 
@@ -75,8 +82,8 @@ def drive(symbol):
 
     tomorrow_data = test_X[-1:]
     tomorrow_price = model.predict(tomorrow_data) * (adj_price - min_price) + min_price
- 
-    print("Model 1 Prediction: ", tomorrow_price[0][0])
+    # tomorrow_price = scaler.inverse_transform(model.predict(tomorrow_data))
+    print("Model 1 Prediction of adjusted close for ", symbol, ": $", round(tomorrow_price[0][0], 2))
 
 symbol = input("Enter a symbol: ")
 drive(symbol)
